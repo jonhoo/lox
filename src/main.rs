@@ -66,6 +66,7 @@ fn main() -> miette::Result<()> {
             match parser.parse_expression() {
                 Ok(tt) => println!("{tt}"),
                 Err(e) => {
+                    // TODO: match error line format
                     eprintln!("{e:?}");
                     std::process::exit(65);
                 }

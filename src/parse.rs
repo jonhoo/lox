@@ -427,80 +427,88 @@ impl<'de> Parser<'de> {
                 return Err(e).wrap_err("on left-hand side");
             }
         };
-        let mut lhs = match lhs {
-            // atoms
-            Token {
-                kind: TokenKind::String,
-                origin,
-                ..
-            } => TokenTree::Atom(Atom::String(Token::unescape(origin))),
-            Token {
-                kind: TokenKind::Number(n),
-                ..
-            } => TokenTree::Atom(Atom::Number(n)),
-            Token {
-                kind: TokenKind::True,
-                ..
-            } => TokenTree::Atom(Atom::Bool(true)),
-            Token {
-                kind: TokenKind::False,
-                ..
-            } => TokenTree::Atom(Atom::Bool(false)),
-            Token {
-                kind: TokenKind::Nil,
-                ..
-            } => TokenTree::Atom(Atom::Nil),
-            Token {
-                kind: TokenKind::Ident,
-                origin,
-                ..
-            } => TokenTree::Atom(Atom::Ident(origin)),
-            Token {
-                kind: TokenKind::Super,
-                ..
-            } => TokenTree::Atom(Atom::Super),
+        let mut lhs =
+            match lhs {
+                // atoms
+                Token {
+                    kind: TokenKind::String,
+                    origin,
+                    ..
+                } => TokenTree::Atom(Atom::String(Token::unescape(origin))),
+                Token {
+                    kind: TokenKind::Number(n),
+                    ..
+                } => TokenTree::Atom(Atom::Number(n)),
+                Token {
+                    kind: TokenKind::True,
+                    ..
+                } => TokenTree::Atom(Atom::Bool(true)),
+                Token {
+                    kind: TokenKind::False,
+                    ..
+                } => TokenTree::Atom(Atom::Bool(false)),
+                Token {
+                    kind: TokenKind::Nil,
+                    ..
+                } => TokenTree::Atom(Atom::Nil),
+                Token {
+                    kind: TokenKind::Ident,
+                    origin,
+                    ..
+                } => TokenTree::Atom(Atom::Ident(origin)),
+                Token {
+                    kind: TokenKind::Super,
+                    ..
+                } => TokenTree::Atom(Atom::Super),
 
-            Token {
-                kind: TokenKind::This,
-                ..
-            } => TokenTree::Atom(Atom::This),
+                Token {
+                    kind: TokenKind::This,
+                    ..
+                } => TokenTree::Atom(Atom::This),
 
-            // groups
-            Token {
-                kind: TokenKind::LeftParen,
-                ..
-            } => {
-                let lhs = self
-                    .parse_expression_within(0)
-                    .wrap_err("in bracketed expression")?;
-                self.lexer
-                    .expect(
-                        TokenKind::RightParen,
-                        "Unexpected end to bracketed expression",
-                    )
-                    .wrap_err("after bracketed expression")?;
-                TokenTree::Cons(Op::Group, vec![lhs])
-            }
+                // groups
+                Token {
+                    kind: TokenKind::LeftParen,
+                    ..
+                } => {
+                    let lhs = self
+                        .parse_expression_within(0)
+                        .wrap_err("in bracketed expression")?;
+                    self.lexer
+                        .expect(
+                            TokenKind::RightParen,
+                            "Unexpected end to bracketed expression",
+                        )
+                        .wrap_err("after bracketed expression")?;
+                    TokenTree::Cons(Op::Group, vec![lhs])
+                }
 
-            // unary prefix expressions
-            Token {
-                kind: TokenKind::Bang | TokenKind::Minus,
-                ..
-            } => {
-                let op = match lhs.kind {
-                    TokenKind::Bang => Op::Bang,
-                    TokenKind::Minus => Op::Minus,
-                    _ => unreachable!("by the outer match arm pattern"),
-                };
-                let ((), r_bp) = prefix_binding_power(op);
-                let rhs = self
-                    .parse_expression_within(r_bp)
-                    .wrap_err("in right-hand side")?;
-                TokenTree::Cons(op, vec![rhs])
-            }
+                // unary prefix expressions
+                Token {
+                    kind: TokenKind::Bang | TokenKind::Minus,
+                    ..
+                } => {
+                    let op = match lhs.kind {
+                        TokenKind::Bang => Op::Bang,
+                        TokenKind::Minus => Op::Minus,
+                        _ => unreachable!("by the outer match arm pattern"),
+                    };
+                    let ((), r_bp) = prefix_binding_power(op);
+                    let rhs = self
+                        .parse_expression_within(r_bp)
+                        .wrap_err("in right-hand side")?;
+                    TokenTree::Cons(op, vec![rhs])
+                }
 
-            t => panic!("bad token: {:?}", t),
-        };
+                token => return Err(miette::miette! {
+                    labels = vec![
+                        LabeledSpan::at(token.offset..token.offset + token.origin.len(), "here"),
+                    ],
+                    help = format!("Unexpected {token:?}"),
+                    "Expected an expression",
+                }
+                .with_source_code(self.whole.to_string())),
+            };
 
         loop {
             let op = self.lexer.peek();
