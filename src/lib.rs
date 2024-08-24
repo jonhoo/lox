@@ -1,5 +1,25 @@
-use miette::{Error, LabeledSpan};
+use miette::{Diagnostic, Error, LabeledSpan, SourceSpan};
 use std::{borrow::Cow, fmt};
+use thiserror::Error;
+
+#[derive(Diagnostic, Debug, Error)]
+#[error("Unexpected token '{token}' in input")]
+pub struct SingleTokenError {
+    #[source_code]
+    src: String,
+
+    pub token: char,
+
+    #[label = "this input character"]
+    err_span: SourceSpan,
+}
+
+impl SingleTokenError {
+    pub fn line(&self) -> usize {
+        let until_unrecongized = &self.src[..=self.err_span.offset()];
+        until_unrecongized.lines().count()
+    }
+}
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Token<'de> {
@@ -143,35 +163,35 @@ impl<'de> Iterator for Lexer<'de> {
                 }))
             };
 
-            let started =
-                match c {
-                    '(' => return just(TokenKind::LeftParen),
-                    ')' => return just(TokenKind::RightParen),
-                    '{' => return just(TokenKind::LeftBrace),
-                    '}' => return just(TokenKind::RightBrace),
-                    ',' => return just(TokenKind::Comma),
-                    '.' => return just(TokenKind::Dot),
-                    '-' => return just(TokenKind::Minus),
-                    '+' => return just(TokenKind::Plus),
-                    ';' => return just(TokenKind::Semicolon),
-                    '*' => return just(TokenKind::Star),
-                    '/' => return just(TokenKind::Slash),
-                    '<' => Started::IfEqualElse(TokenKind::LessEqual, TokenKind::Less),
-                    '>' => Started::IfEqualElse(TokenKind::GreaterEqual, TokenKind::Greater),
-                    '!' => Started::IfEqualElse(TokenKind::BangEqual, TokenKind::Bang),
-                    '=' => Started::IfEqualElse(TokenKind::EqualEqual, TokenKind::Equal),
-                    '"' => Started::String,
-                    '0'..='9' => Started::Number,
-                    'a'..='z' | 'A'..='Z' | '_' => Started::Ident,
-                    c if c.is_whitespace() => continue,
-                    c => return Some(Err(miette::miette! {
-                        labels = vec![
-                            LabeledSpan::at(self.byte - c.len_utf8()..self.byte, "this character"),
-                        ],
-                        "Unexpected token '{c}' in input",
+            let started = match c {
+                '(' => return just(TokenKind::LeftParen),
+                ')' => return just(TokenKind::RightParen),
+                '{' => return just(TokenKind::LeftBrace),
+                '}' => return just(TokenKind::RightBrace),
+                ',' => return just(TokenKind::Comma),
+                '.' => return just(TokenKind::Dot),
+                '-' => return just(TokenKind::Minus),
+                '+' => return just(TokenKind::Plus),
+                ';' => return just(TokenKind::Semicolon),
+                '*' => return just(TokenKind::Star),
+                '/' => return just(TokenKind::Slash),
+                '<' => Started::IfEqualElse(TokenKind::LessEqual, TokenKind::Less),
+                '>' => Started::IfEqualElse(TokenKind::GreaterEqual, TokenKind::Greater),
+                '!' => Started::IfEqualElse(TokenKind::BangEqual, TokenKind::Bang),
+                '=' => Started::IfEqualElse(TokenKind::EqualEqual, TokenKind::Equal),
+                '"' => Started::String,
+                '0'..='9' => Started::Number,
+                'a'..='z' | 'A'..='Z' | '_' => Started::Ident,
+                c if c.is_whitespace() => continue,
+                c => {
+                    return Some(Err(SingleTokenError {
+                        src: self.whole.to_string(),
+                        token: c,
+                        err_span: SourceSpan::from(self.byte - c.len_utf8()..self.byte),
                     }
-                    .with_source_code(self.whole.to_string()))),
-                };
+                    .into()));
+                }
+            };
 
             break match started {
                 Started::String => todo!(),

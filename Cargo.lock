@@ -164,6 +164,7 @@ dependencies = [
  "bytes",
  "clap",
  "miette",
+ "thiserror",
 ]
 
 [[package]]

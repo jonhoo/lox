@@ -25,7 +25,21 @@ fn main() -> miette::Result<()> {
                 .wrap_err_with(|| format!("reading '{}' failed", filename.display()))?;
 
             for token in Lexer::new(&file_contents) {
-                let token = token?;
+                let token = match token {
+                    Ok(t) => t,
+                    Err(e) => {
+                        if let Some(unrecognized) = e.downcast_ref::<SingleTokenError>() {
+                            eprintln!("{e:?}");
+                            eprintln!(
+                                "[line {}] Error: Unexpected character: {}",
+                                unrecognized.line(),
+                                unrecognized.token
+                            );
+                            std::process::exit(65);
+                        }
+                        return Err(e);
+                    }
+                };
                 println!("{token}");
             }
             println!("EOF  null");
