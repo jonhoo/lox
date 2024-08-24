@@ -793,14 +793,14 @@ impl fmt::Display for TokenTree<'_> {
 fn prefix_binding_power(op: Op) -> ((), u8) {
     match op {
         Op::Print | Op::Return => ((), 1),
-        Op::Bang | Op::Minus => ((), 9),
+        Op::Bang | Op::Minus => ((), 11),
         _ => panic!("bad op: {:?}", op),
     }
 }
 
 fn postfix_binding_power(op: Op) -> Option<(u8, ())> {
     let res = match op {
-        Op::Call => (11, ()),
+        Op::Call => (13, ()),
         _ => return None,
     };
     Some(res)
@@ -810,9 +810,16 @@ fn infix_binding_power(op: Op) -> Option<(u8, u8)> {
     let res = match op {
         // '=' => (2, 1),
         // '?' => (4, 3),
-        Op::Plus | Op::Minus => (5, 6),
-        Op::Star | Op::Slash => (7, 8),
-        Op::Field => (14, 13),
+        Op::And | Op::Or => (3, 4),
+        Op::BangEqual
+        | Op::EqualEqual
+        | Op::Less
+        | Op::LessEqual
+        | Op::Greater
+        | Op::GreaterEqual => (5, 6),
+        Op::Plus | Op::Minus => (7, 8),
+        Op::Star | Op::Slash => (9, 10),
+        Op::Field => (16, 15),
         _ => return None,
     };
     Some(res)
