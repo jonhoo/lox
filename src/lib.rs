@@ -54,7 +54,7 @@ impl fmt::Display for Token<'_> {
         match self.kind {
             TokenKind::LeftParen => write!(f, "LEFT_PAREN {origin} null"),
             TokenKind::RightParen => write!(f, "RIGHT_PAREN {origin} null"),
-            TokenKind::LeftBrace => write!(f, "LEFT_BRACE  {origin} null"),
+            TokenKind::LeftBrace => write!(f, "LEFT_BRACE {origin} null"),
             TokenKind::RightBrace => write!(f, "RIGHT_BRACE {origin} null"),
             TokenKind::Comma => write!(f, "COMMA {origin} null"),
             TokenKind::Dot => write!(f, "DOT {origin} null"),
