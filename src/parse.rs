@@ -651,7 +651,9 @@ pub enum Atom<'de> {
 impl fmt::Display for Atom<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Atom::String(s) => write!(f, "\"{s}\""),
+            // NOTE: this feels more correct:
+            // Atom::String(s) => write!(f, "\"{s}\""),
+            Atom::String(s) => write!(f, "{s}"),
             Atom::Number(n) => {
                 if *n == n.trunc() {
                     // tests require that integers are printed as N.0
