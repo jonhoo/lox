@@ -6,6 +6,6 @@ edition = "2021"
 rust-version = "1.80"
 
 [dependencies]
-anyhow = "1.0.68"                                # error handling
-bytes = "1.3.0"                                  # helps manage buffers
-thiserror = "1.0.38"                             # error handling
+miette = { version = "7.2.0", features = ["fancy"] }
+bytes = "1.3.0"
+clap = { version = "4.5.16", features = ["derive"] }
