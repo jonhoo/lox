@@ -150,6 +150,7 @@ impl<'de> Iterator for Lexer<'de> {
             self.byte += c.len_utf8();
 
             enum Started {
+                Slash,
                 String,
                 Number,
                 Ident,
@@ -174,7 +175,7 @@ impl<'de> Iterator for Lexer<'de> {
                 '+' => return just(TokenKind::Plus),
                 ';' => return just(TokenKind::Semicolon),
                 '*' => return just(TokenKind::Star),
-                '/' => return just(TokenKind::Slash),
+                '/' => Started::Slash,
                 '<' => Started::IfEqualElse(TokenKind::LessEqual, TokenKind::Less),
                 '>' => Started::IfEqualElse(TokenKind::GreaterEqual, TokenKind::Greater),
                 '!' => Started::IfEqualElse(TokenKind::BangEqual, TokenKind::Bang),
@@ -195,6 +196,20 @@ impl<'de> Iterator for Lexer<'de> {
 
             break match started {
                 Started::String => todo!(),
+                Started::Slash => {
+                    if self.rest.starts_with('/') {
+                        // this is a comment!
+                        let line_end = self.rest.find('\n').unwrap_or_else(|| self.rest.len());
+                        self.byte += line_end;
+                        self.rest = &self.rest[line_end..];
+                        continue;
+                    } else {
+                        Some(Ok(Token {
+                            origin: c_str,
+                            kind: TokenKind::Slash,
+                        }))
+                    }
+                }
                 Started::Ident => {
                     let first_non_ident = c_onwards
                         .find(|c| !matches!(c, 'a'..='z' | 'A'..='Z' | '0'..='9' | '_'))
