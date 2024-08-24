@@ -110,7 +110,14 @@ impl fmt::Display for Token<'_> {
             TokenKind::Equal => write!(f, "EQUAL {origin} null"),
             TokenKind::String => write!(f, "STRING {origin} {}", Token::unescape(origin)),
             TokenKind::Ident => write!(f, "IDENTIFIER {origin} null"),
-            TokenKind::Number(n) => write!(f, "NUMBER {origin} {n}"),
+            TokenKind::Number(n) => {
+                if n == n.trunc() {
+                    // tests require that integers are printed as N.0
+                    write!(f, "NUMBER {origin} {n}.0")
+                } else {
+                    write!(f, "NUMBER {origin} {n}")
+                }
+            }
             TokenKind::And => write!(f, "AND {origin} null"),
             TokenKind::Class => write!(f, "CLASS {origin} null"),
             TokenKind::Else => write!(f, "ELSE {origin} null"),
