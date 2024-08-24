@@ -3,7 +3,7 @@ use std::{borrow::Cow, fmt};
 use thiserror::Error;
 
 #[derive(Diagnostic, Debug, Error)]
-#[error("Unexpected token '{token}' in input")]
+#[error("Unexpected token '{token}'")]
 pub struct SingleTokenError {
     #[source_code]
     src: String,
@@ -15,6 +15,23 @@ pub struct SingleTokenError {
 }
 
 impl SingleTokenError {
+    pub fn line(&self) -> usize {
+        let until_unrecongized = &self.src[..=self.err_span.offset()];
+        until_unrecongized.lines().count()
+    }
+}
+
+#[derive(Diagnostic, Debug, Error)]
+#[error("Unterminated string")]
+pub struct StringTerminationError {
+    #[source_code]
+    src: String,
+
+    #[label = "this string literal"]
+    err_span: SourceSpan,
+}
+
+impl StringTerminationError {
     pub fn line(&self) -> usize {
         let until_unrecongized = &self.src[..=self.err_span.offset()];
         until_unrecongized.lines().count()
@@ -115,7 +132,9 @@ impl fmt::Display for Token<'_> {
 
 impl Token<'_> {
     pub fn unescape<'de>(s: &'de str) -> Cow<'de, str> {
-        todo!()
+        // Lox has no escaping, so just remove the "
+        // Since it has no escaping, strings can't contain ", so trim won't trim multiple
+        Cow::Borrowed(s.trim_matches('"'))
     }
 }
 
@@ -195,7 +214,28 @@ impl<'de> Iterator for Lexer<'de> {
             };
 
             break match started {
-                Started::String => todo!(),
+                Started::String => {
+                    if let Some(end) = self.rest.find('"') {
+                        let literal = &c_onwards[..end + 1 + 1];
+                        self.byte += end + 1;
+                        self.rest = &self.rest[end + 1..];
+                        Some(Ok(Token {
+                            origin: literal,
+                            kind: TokenKind::String,
+                        }))
+                    } else {
+                        let err = StringTerminationError {
+                            src: self.whole.to_string(),
+                            err_span: SourceSpan::from(self.byte - c.len_utf8()..self.whole.len()),
+                        };
+
+                        // swallow the remainder of input as being a string
+                        self.byte += self.rest.len();
+                        self.rest = &self.rest[self.rest.len()..];
+
+                        return Some(Err(err.into()));
+                    }
+                }
                 Started::Slash => {
                     if self.rest.starts_with('/') {
                         // this is a comment!

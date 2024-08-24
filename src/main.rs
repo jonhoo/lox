@@ -37,6 +37,11 @@ fn main() -> miette::Result<()> {
                                 unrecognized.line(),
                                 unrecognized.token
                             );
+                        } else if let Some(unterminated) =
+                            e.downcast_ref::<StringTerminationError>()
+                        {
+                            any_cc_err = true;
+                            eprintln!("[line {}] Error: Unterminated string.", unterminated.line(),);
                         }
                         continue;
                     }
